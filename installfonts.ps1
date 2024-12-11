@@ -25,23 +25,32 @@ foreach ($font in $fonts) {
     $fullname = $font.FullName
     $fontname = $font.Name
 
+    # Only process .ttf files
     if ($extension -eq ".ttf") {
         $fontValue = "$basename (TrueType)"
         log "Font value is $fontValue"
+    } else {
+        log "Skipping unsupported file type: $fontname"
+        continue
     }
 
-    if ([string]::IsNullOrEmpty($fontValue)) {
-        log "Font not found or unsupported format"
+    # Check if the font file exists in Windows\Fonts
+    if (Test-Path "$env:windir\Fonts\$fontname") {
+        log "Font $fontname already exists in C:\Windows\Fonts."
     } else {
-        if (Test-Path "$env:windir\Fonts\$fontname") {
-            log "Font $fontname already exists"
-        } else {
-            Copy-Item -Path $fullname -Destination "$env:windir\Fonts" -Force
-            log "Copied $fullname to C:\Windows\Fonts..."
-            reg.exe add $regpath /v "$fontValue" /t REG_SZ /d "$fontname" /f | Out-Host
-            log "Added $fontValue to registry"
+        # Copy font file to Windows\Fonts
+        Copy-Item -Path $fullname -Destination "$env:windir\Fonts" -Force
+        log "Copied $fullname to C:\Windows\Fonts..."
+
+        # Add font to registry using New-ItemProperty
+        try {
+            New-ItemProperty -Path $regpath -Name "$fontValue" -Type String -Value "$fontname" -Force
+            log "Successfully added $fontValue to registry."
+        } catch {
+            log "Failed to add $fontValue to registry: $_"
         }
     }
 }
 
 Stop-Transcript
+
