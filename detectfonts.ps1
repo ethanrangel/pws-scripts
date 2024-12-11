@@ -22,33 +22,34 @@ $regpath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
 foreach ($font in $fonts) {
     $basename = $font.BaseName
     $extension = $font.Extension
+    $fullname = $font.FullName
     $fontname = $font.Name
 
+    # Only process .ttf files
     if ($extension -eq ".ttf") {
         $fontValue = "$basename (TrueType)"
         log "Checking font: $fontValue"
     } else {
-        log "Skipping unsupported format: $fontname"
+        log "Skipping unsupported file type: $fontname"
         continue
     }
 
     # Check if the font file exists in Windows\Fonts
     $fontPath = "$env:windir\Fonts\$fontname"
     if (Test-Path $fontPath) {
-        log "Font file found: $fontPath"
+        log "Font file $fontname exists in C:\Windows\Fonts."
     } else {
-        log "Font file missing: $fontname"
+        log "Font file $fontname is missing in C:\Windows\Fonts."
     }
 
-    # Check if the registry entry exists
+    # Check if the registry entry exists using HKLM
     try {
         $regEntry = Get-ItemProperty -Path $regpath -Name "$fontValue" -ErrorAction Stop
         log "Registry entry found for $fontValue: $($regEntry.$fontValue)"
     } catch {
-        log "Registry entry missing for $fontValue"
+        log "Registry entry missing for $fontValue."
     }
 }
 
 Stop-Transcript
-
 
