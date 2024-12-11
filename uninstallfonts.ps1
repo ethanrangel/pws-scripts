@@ -16,7 +16,7 @@ $FontDirectory = "$location\newfonts" # Adjust to match where your fonts are sto
 $fonts = Get-ChildItem -Path "$FontDirectory"
 
 # Set the font REGPATH
-$regpath = "HKLM:\SOFTWARE\Microsoft NT\CurrentVersion\Fonts"
+$regpath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
 
 # Unregister and delete each font
 foreach ($font in $fonts) {
@@ -36,7 +36,7 @@ foreach ($font in $fonts) {
 
     # Remove the registry entry
     try {
-        reg.exe delete "$regpath" /v "$fontValue" /f | Out-Host
+        Remove-ItemProperty -Path $regpath -Name "$fontValue" -ErrorAction Stop
         log "Removed $fontValue from registry."
     } catch {
         log "Failed to remove $fontValue from registry: $_"
