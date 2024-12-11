@@ -16,43 +16,45 @@ $FontDirectory = "$location\newfonts" # Adjust to match where your fonts are sto
 $fonts = Get-ChildItem -Path "$FontDirectory"
 
 # Set the font REGPATH
-$regpath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
+$regpath = "HKLM:\SOFTWARE\Microsoft NT\CurrentVersion\Fonts"
 
 # Unregister and delete each font
 foreach ($font in $fonts) {
     $basename = $font.BaseName
     $extension = $font.Extension
+    $fullname = $font.FullName
     $fontname = $font.Name
 
+    # Only process .ttf files
     if ($extension -eq ".ttf") {
         $fontValue = "$basename (TrueType)"
         log "Font value to remove: $fontValue"
+    } else {
+        log "Skipping unsupported file type: $fontname"
+        continue
     }
 
-    if ([string]::IsNullOrEmpty($fontValue)) {
-        log "Font not found or unsupported format"
-    } else {
-        # Remove the registry entry
-        try {
-            reg.exe delete $regpath /v "$fontValue" /f | Out-Host
-            log "Removed $fontValue from registry"
-        } catch {
-            log "Failed to remove $fontValue from registry"
-        }
+    # Remove the registry entry
+    try {
+        reg.exe delete "$regpath" /v "$fontValue" /f | Out-Host
+        log "Removed $fontValue from registry."
+    } catch {
+        log "Failed to remove $fontValue from registry: $_"
+    }
 
-        # Remove the font file from Windows\Fonts
-        $fontPath = "$env:windir\Fonts\$fontname"
-        if (Test-Path $fontPath) {
-            try {
-                Remove-Item -Path $fontPath -Force
-                log "Removed $fontname from C:\Windows\Fonts"
-            } catch {
-                log "Failed to remove $fontname from C:\Windows\Fonts"
-            }
-        } else {
-            log "Font file $fontname not found in C:\Windows\Fonts"
+    # Remove the font file from Windows\Fonts
+    $fontPath = "$env:windir\Fonts\$fontname"
+    if (Test-Path $fontPath) {
+        try {
+            Remove-Item -Path $fontPath -Force
+            log "Removed $fontname from C:\Windows\Fonts."
+        } catch {
+            log "Failed to remove $fontname from C:\Windows\Fonts: $_"
         }
+    } else {
+        log "Font file $fontname not found in C:\Windows\Fonts."
     }
 }
 
 Stop-Transcript
+
