@@ -8,48 +8,49 @@ function log() {
 
 Start-Transcript -Path "C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\fontDetect.log" -Force -Verbose
 
-# Get the current location and set the fonts folder dynamically
-$location = Get-Location
-$FontDirectory = "$location\newfonts" # Adjust to match where your fonts are stored
+# Define the fonts you expect to be installed
+$expectedFonts = @(
+    @{ Name = "Noto Sans JP Black (TrueType)"; File = "NotoSansJP-Black.ttf" },
+    @{ Name = "Font2 (TrueType)"; File = "Font2.ttf" }
+)
 
-# Get the fonts in the dynamic fonts folder
-$fonts = Get-ChildItem -Path "$FontDirectory"
-
-# Set the font REGPATH
+# Set the registry path
 $regpath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
 
-# Detect each font
-foreach ($font in $fonts) {
-    $basename = $font.BaseName
-    $extension = $font.Extension
-    $fullname = $font.FullName
-    $fontname = $font.Name
+# Variable to track detection status
+$allFontsDetected = $true
 
-    # Only process .ttf files
-    if ($extension -eq ".ttf") {
-        $fontValue = "$basename (TrueType)"
-        log "Checking font: $fontValue"
-    } else {
-        log "Skipping unsupported file type: $fontname"
-        continue
-    }
+foreach ($font in $expectedFonts) {
+    $fontName = $font["Name"]
+    $fontFile = $font["File"]
 
     # Check if the font file exists in Windows\Fonts
-    $fontPath = "$env:windir\Fonts\$fontname"
-    if (Test-Path $fontPath) {
-        log "Font file $fontname exists in C:\Windows\Fonts."
+    $fontPath = "$env:windir\Fonts\$fontFile"
+    if (-not (Test-Path $fontPath)) {
+        log "Font file $fontFile is missing in C:\Windows\Fonts."
+        $allFontsDetected = $false
     } else {
-        log "Font file $fontname is missing in C:\Windows\Fonts."
+        log "Font file $fontFile exists in C:\Windows\Fonts."
     }
 
-    # Check if the registry entry exists using HKLM
+    # Check if the registry entry exists
     try {
-        $regEntry = Get-ItemProperty -Path $regpath -Name "$fontValue" -ErrorAction Stop
-        log "Registry entry found for $fontValue: $($regEntry.$fontValue)"
+        $regEntry = Get-ItemProperty -Path $regpath -Name "$fontName" -ErrorAction Stop
+        log "Registry entry found for $fontName: $($regEntry.$fontName)"
     } catch {
-        log "Registry entry missing for $fontValue."
+        log "Registry entry missing for $fontName."
+        $allFontsDetected = $false
     }
 }
 
 Stop-Transcript
+
+# Exit with appropriate code for Intune
+if ($allFontsDetected) {
+    log "All fonts detected successfully."
+    Exit 0
+} else {
+    log "One or more fonts are missing."
+    Exit 1
+}
 
